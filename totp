@@ -1,0 +1,60 @@
+#!/bin/bash
+
+# Arg 1: base32-encoded value, does not need to be padded.
+# Outputs to stdout the raw decoded value.
+function base32_decode() {
+    local value=$(echo -n "$1"|tr 018a-z OIBA-Z)
+    if [ $((${#value} % 8 )) -gt 0 ]; then
+        local i pad
+        pad=$((8 - ${#value} % 8))
+        for ((i=0; i<$pad; i++)); do value+='='; done
+    fi
+    echo -n "$value"|base32 -d
+}
+
+# Arg 1: hash function identifier
+# Arg 2: base32-encoded message string
+# Arg 3: base32-encoded key string
+# Outputs result as hex characters, which is the HMAC code.
+# Output length depends on chosen hash function.
+function hmac() {
+    local hexkey=$(base32_decode "$3"|xxd -p|tr -d \\n)
+    base32_decode "$2" | \
+        openssl $1 -hex \
+                   -mac HMAC \
+                   -macopt hexkey:$hexkey | \
+        awk '{printf("%s",$2)}'
+}
+
+# Arg 1: base32-encoded TOTP secret key
+# Outputs a 6 digit decimal TOTP code to stdout.
+# SHA1 is used as hashing algorithm.
+function totp() {
+    declare -r totp_period_seconds=30
+    local key_base32=$1 time_counter t_base32
+    time_counter=$(($(date +%s) / $totp_period_seconds))
+    t_base32=$($hmax_hex
+        printf %016x $time_counter | xxd -r -p | base32
+    )
+
+    local hmac_hex hotp_offset hotp_code
+
+    # 40 hexchars (160 bits or 20 bytes):
+    hmac_hex=$(hmac sha1 $t_base32 $key_base32)
+
+    # extraction offset is lowest/rightmost 4 bits
+    # of 160 bit sha1 (multiplied by 2 for hex offset):
+    hotp_offset=$((0x${hmac_hex:39:1} * 2))
+    hotp_code=$((
+        ((0x${hmac_hex:$hotp_offset:2} & 0x7f) << 24) |
+        (0x${hmac_hex:$(($hotp_offset + 2)):2} << 16) |
+        (0x${hmac_hex:$(($hotp_offset + 4)):2} << 8) |
+        (0x${hmac_hex:$(($hotp_offset + 6)):2})
+    ))
+    
+    printf %06d $(($hotp_code % 1000000))
+}
+
+read key_base32
+totp $key_base32
+echo
