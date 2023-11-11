@@ -33,7 +33,7 @@ function totp() {
     declare -r totp_period_seconds=30
     local key_base32=$1 time_counter t_base32
     time_counter=$(($(date +%s) / $totp_period_seconds))
-    t_base32=$($hmax_hex
+    t_base32=$(
         printf %016x $time_counter | xxd -r -p | base32
     )
 
