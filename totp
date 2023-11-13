@@ -44,14 +44,13 @@ function totp() {
 
     # extraction offset is lowest/rightmost 4 bits
     # of 160 bit sha1 (multiplied by 2 for hex offset):
-    hotp_offset=$((0x${hmac_hex:39:1} * 2))
+    hotp_offset=$(( 0x${hmac_hex:39:1} * 2 ))
+
+    # Extract 32 bit unsigned int at offset:
     hotp_code=$((
-        ((0x${hmac_hex:$hotp_offset:2} & 0x7f) << 24) |
-        (0x${hmac_hex:$(($hotp_offset + 2)):2} << 16) |
-        (0x${hmac_hex:$(($hotp_offset + 4)):2} << 8) |
-        (0x${hmac_hex:$(($hotp_offset + 6)):2})
+       0x${hmac_hex:$hotp_offset:8} & 0x7fffffff
     ))
-    
+
     printf %06d $(($hotp_code % 1000000))
 }
 
