@@ -1,5 +1,8 @@
 # Implementation of TOTP in a shell script
 
+The implementation is described in this blog post:
+https://stegard.net/2023/11/implementing-a-time-based-one-time-password-totp-generator/
+
 ## Requirements
 
 The following commands must be available in your `PATH`:
